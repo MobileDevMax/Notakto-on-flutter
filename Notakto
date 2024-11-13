@@ -1,0 +1,186 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(NotaktoApp());
+}
+
+class NotaktoApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Notakto',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: BoardSelection(),
+    );
+  }
+}
+
+class BoardSelection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Select the number of boards')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(7, (index) {
+            int boardCount = index + 3;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => NotaktoGame(boardCount: boardCount)),
+                  );
+                },
+                child: Text('Play on $boardCount boards'),
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+}
+
+class NotaktoGame extends StatefulWidget {
+  final int boardCount;
+
+  NotaktoGame({required this.boardCount});
+
+  @override
+  _NotaktoGameState createState() => _NotaktoGameState();
+}
+
+class _NotaktoGameState extends State<NotaktoGame> {
+  late List<List<String>> boards;
+  bool isPlayerXTurn = true;
+  bool gameEnded = false;
+  String currentPlayer = 'Player 1';
+
+  @override
+  void initState() {
+    super.initState();
+    boards = List.generate(widget.boardCount, (_) => List.generate(9, (_) => '')); 
+  }
+
+  void resetGame() {
+    setState(() {
+      boards = List.generate(widget.boardCount, (_) => List.generate(9, (_) => ''));
+      isPlayerXTurn = true;
+      gameEnded = false;
+      currentPlayer = 'Player 1';
+    });
+  }
+
+  void makeMove(int boardIndex, int cellIndex) {
+    if (boards[boardIndex][cellIndex] == '' && !gameEnded) {
+      setState(() {
+        boards[boardIndex][cellIndex] = 'X'; 
+
+        if (checkWin(boardIndex) || boards.every((board) => board.every((cell) => cell.isNotEmpty))) {
+          gameEnded = true;
+          showResultDialog(isPlayerXTurn ? 'Player 1 loses. Player 2 wins!' : 'Player 2 loses. Player 1 wins!');
+        } else {
+          isPlayerXTurn = !isPlayerXTurn; 
+          currentPlayer = isPlayerXTurn ? 'Player 1' : 'Player 2';
+        }
+      });
+    }
+  }
+
+  bool checkWin(int boardIndex) {
+    const winningCombos = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6],
+    ];
+
+    for (var combo in winningCombos) {
+      if (boards[boardIndex][combo[0]] == 'X' &&
+          boards[boardIndex][combo[1]] == 'X' &&
+          boards[boardIndex][combo[2]] == 'X') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void showResultDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Game over'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              resetGame();
+            },
+            child: Text('ОК'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Notakto - Boards: ${widget.boardCount}'),
+        actions: [
+          IconButton(icon: Icon(Icons.refresh), onPressed: resetGame),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Text('Current move: $currentPlayer', style: TextStyle(fontSize: 24)),
+            GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+              itemCount: widget.boardCount,
+              shrinkWrap: true,
+              physics: NeverScrollableScrollPhysics(),
+              itemBuilder: (context, boardIndex) {
+                return Container(
+                  margin: const EdgeInsets.all(4.0),
+                  child: GridView.builder(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+                    itemCount: 9,
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
+                    itemBuilder: (context, cellIndex) {
+                      return GestureDetector(
+                        onTap: () => makeMove(boardIndex, cellIndex),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.black),
+                            color: gameEnded ? Colors.grey : Colors.white,
+                          ),
+                          child: Center(
+                            child: Text(
+                              boards[boardIndex][cellIndex],
+                              style: TextStyle(fontSize: 60),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
